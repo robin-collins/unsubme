@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/_head') %>
+</head>
+<body class="bg-gray-100">
+  <%- include('partials/_header') %>
+  <div class="container mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
+    <h2 class="text-3xl font-semibold mb-6 text-center">IMAP Information</h2>
+    <form action="/imap/imap-info" method="POST" class="space-y-4">
+      <div>
+        <label for="emailAddress" class="block text-sm font-medium text-gray-700">Email Address</label>
+        <input type="email" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="emailAddress" name="emailAddress" required>
+      </div>
+      <div>
+        <label for="imapServer" class="block text-sm font-medium text-gray-700">IMAP Server</label>
+        <input type="text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="imapServer" name="imapServer" required>
+      </div>
+      <div>
+        <label for="port" class="block text-sm font-medium text-gray-700">Port</label>
+        <input type="number" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="port" name="port" required>
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+        <input type="password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="password" name="password" required>
+      </div>
+      <button type="submit" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Submit</button>
+    </form>
+  </div>
+  <%- include('partials/_footer') %>
+</body>
+</html>
