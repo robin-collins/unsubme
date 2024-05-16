@@ -10,7 +10,8 @@ const emailSchema = new mongoose.Schema({
   subject: { type: String, required: true },
   date: { type: Date, required: true },
   body: { type: String, required: true },
-  companyDomain: { type: String, required: true }, // New field
+  companyDomain: { type: String, required: true },
+  isMarketingEmail: { type: Boolean, default: false },
 });
 
 emailSchema.index({ accountID: 1, uid: 1 }, { unique: true });

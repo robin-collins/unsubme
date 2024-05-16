@@ -12,7 +12,7 @@ const ImapAccount = require("./models/ImapAccount");
 
 if (!process.env.DATABASE_URL || !process.env.SESSION_SECRET) {
   console.error("Error: config environment variables not set. Please create/edit .env configuration file.");
-  process.exit(-1);
+  process.exit(1);
 }
 
 const app = express();
