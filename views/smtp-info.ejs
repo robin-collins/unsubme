@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/_head') %>
+<body class="bg-gray-100">
+  <%- include('partials/_header') %>
+  <div class="container mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
+    <h2 class="text-3xl font-semibold mb-6 text-center">SMTP Information</h2>
+    <form id="smtpForm" class="space-y-4">
+      <div>
+        <label for="emailAddress" class="block text-sm font-medium text-gray-700">Email Address</label>
+        <input type="email" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="emailAddress" name="emailAddress" value="<%= userEmail %>" required>
+      </div>
+      <div>
+        <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+        <input type="text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="username" name="username" value="<%= userEmail %>" required>
+      </div>
+      <div>
+        <label for="smtpServer" class="block text-sm font-medium text-gray-700">SMTP Server</label>
+        <input type="text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="smtpServer" name="smtpServer" value="<%= emailSettings ? emailSettings.address : '' %>" required>
+      </div>
+      <div>
+        <label for="port" class="block text-sm font-medium text-gray-700">Port</label>
+        <input type="number" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="port" name="port" value="<%= emailSettings ? emailSettings.port : '' %>" required>
+      </div>
+      <div>
+        <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+        <input type="password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="password" name="password" required>
+      </div>
+      <div>
+        <label for="encryption" class="block text-sm font-medium text-gray-700">Encryption</label>
+        <input type="text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="encryption" name="encryption" value="<%= emailSettings ? emailSettings.secure : '' %>" required>
+      </div>
+      <button type="button" id="testSmtpButton" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Test SMTP</button>
+      <button type="submit" id="submitSmtpButton" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500" disabled>Submit</button>
+    </form>
+  </div>
+  <%- include('partials/_footer') %>
+  <script>
+    document.getElementById('emailAddress').addEventListener('blur', fetchSmtpSettings);
+
+    async function fetchSmtpSettings() {
+      const emailAddress = document.getElementById('emailAddress').value;
+      if (!isValidEmail(emailAddress)) {
+        console.log('Invalid email address');
+        return;
+      }
+      console.log(`Fetching settings for email: ${emailAddress}`);
+
+      try {
+        const response = await fetch('/account/fetch-smtp-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ emailAddress }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch email settings: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Fetched email settings:', data);
+
+        document.getElementById('smtpServer').value = data.address;
+        document.getElementById('port').value = data.port;
+        document.getElementById('encryption').value = data.secure;
+      } catch (error) {
+        console.error('Error fetching email settings:', error);
+        alert('Failed to fetch email settings');
+      }
+    }
+
+    function isValidEmail(email) {
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return re.test(email);
+    }
+
+    document.getElementById('testSmtpButton').addEventListener('click', async () => {
+      const emailAddress = document.getElementById('emailAddress').value;
+      const username = document.getElementById('username').value;
+      const smtpServer = document.getElementById('smtpServer').value;
+      const port = document.getElementById('port').value;
+      const password = document.getElementById('password').value;
+      const encryption = document.getElementById('encryption').value;
+
+      const testSmtpDetails = { emailAddress, username, smtpServer, port, password, encryption };
+
+      try {
+        const response = await fetch('/account/test-smtp', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(testSmtpDetails),
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+          alert('SMTP connection successful!');
+          document.getElementById('submitSmtpButton').disabled = false;
+        } else {
+          alert('SMTP connection failed: ' + result.message);
+        }
+      } catch (error) {
+        console.error('Error testing SMTP settings:', error);
+        alert('Error testing SMTP settings');
+      }
+    });
+
+    document.getElementById('smtpForm').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const emailAddress = document.getElementById('emailAddress').value;
+      const username = document.getElementById('username').value;
+      const smtpServer = document.getElementById('smtpServer').value;
+      const port = document.getElementById('port').value;
+      const password = document.getElementById('password').value;
+      const encryption = document.getElementById('encryption').value;
+
+      const smtpDetails = { emailAddress, username, smtpServer, port, password, encryption };
+
+      try {
+        const response = await fetch('/account/add-smtp-account', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(smtpDetails),
+        });
+
+        if (response.ok) {
+          alert('SMTP account added successfully!');
+          window.location.href = '/account/manage';
+        } else {
+          const error = await response.json();
+          alert('Failed to add SMTP account: ' + error.message);
+        }
+      } catch (error) {
+        console.error('Error adding SMTP account:', error);
+        alert('Error adding SMTP account');
+      }
+    });
+  </script>
+</body>
+</html>

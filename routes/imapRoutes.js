@@ -1,17 +1,19 @@
+// /routes/imapRoutes.js
 const express = require('express');
 const { isAuthenticated } = require('./middleware/authMiddleware');
 const { fetchEmails } = require('../services/imapService');
+const { getEmailSettings } = require('../services/emailSettingsService');
 const router = express.Router();
 const ImapAccount = require('../models/ImapAccount');
 
 router.get('/add-imap-account', isAuthenticated, (req, res) => {
-  res.render('imap-info');
+  res.render('imap-info', { emailSettings: null });
 });
 
 router.post('/imap-info', isAuthenticated, async (req, res) => {
   try {
-    const { emailAddress, imapServer, port, password } = req.body;
-    const requiredFields = { emailAddress, imapServer, port, password };
+    const { emailAddress, imapServer, port, password, schedule } = req.body;
+    const requiredFields = { emailAddress, imapServer, port, password, schedule };
 
     for (const [field, value] of Object.entries(requiredFields)) {
       if (!value) {
@@ -22,11 +24,12 @@ router.post('/imap-info', isAuthenticated, async (req, res) => {
 
     // Save IMAP account details to the database
     const imapAccount = new ImapAccount({
-      userID: req.session.userId, // Assuming `req.session.userId` contains the authenticated user ID
+      userID: req.session.userId,
       email: emailAddress,
       server: imapServer,
       port: parseInt(port, 10),
       password: password,
+      schedule: schedule, // Save the schedule
     });
 
     const savedImapAccount = await imapAccount.save();
@@ -41,6 +44,27 @@ router.post('/imap-info', isAuthenticated, async (req, res) => {
       console.error(error.stack);
       res.status(500).send('Internal Server Error');
     }
+  }
+});
+
+router.post('/fetch-email-settings', isAuthenticated, async (req, res) => {
+  try {
+    const { emailAddress } = req.body;
+    console.log(`Received request to fetch settings for: ${emailAddress}`);
+
+    const emailSettings = await getEmailSettings(emailAddress);
+
+    if (!emailSettings) {
+      return res.status(400).json({ error: 'Email settings not found' });
+    }
+
+    const imapSettings = emailSettings.settings.find(setting => setting.protocol === 'IMAP');
+    console.log('Fetched IMAP settings:', imapSettings);
+
+    res.json(imapSettings);
+  } catch (error) {
+    console.error('Error fetching email settings:', error.message);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 });
 
@@ -60,16 +84,15 @@ router.get('/fetch-emails', isAuthenticated, async (req, res) => {
         port: imapAccount.port,
         password: imapAccount.password
       };
-      console.log(imapInfo);
+      console.log("Fetching email for account: ", imapInfo.email);
       await fetchEmails(imapInfo, imapAccount._id); // Pass the accountID
     }
 
-    res.send('Emails fetched and stored successfully.');
+    res.redirect('/account/manage');
   } catch (error) {
     console.error('Error handling email fetching:', error.message);
     console.error(error.stack);
     res.status(500).send(`Error fetching emails: ${error.message}`);
   }
 });
-
 module.exports = router;

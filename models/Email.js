@@ -1,3 +1,4 @@
+// /models/Email.js
 const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
@@ -9,6 +10,7 @@ const emailSchema = new mongoose.Schema({
   subject: { type: String, required: true },
   date: { type: Date, required: true },
   body: { type: String, required: true },
+  companyDomain: { type: String, required: true }, // New field
 });
 
 emailSchema.index({ accountID: 1, uid: 1 }, { unique: true });

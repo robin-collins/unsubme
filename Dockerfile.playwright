@@ -1,0 +1,21 @@
+# Dockerfile.playwright
+
+# Use the official Node.js 20 image as the base image
+FROM node:20-bookworm
+
+# Install Playwright with all necessary dependencies
+RUN npx -y playwright@1.44.0 install --with-deps
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Copy the script to keep the container running and process URLs
+COPY entrypoint.sh /app/entrypoint.sh
+COPY worker.js /app/worker.js
+RUN chmod +x /app/entrypoint.sh
+
+# Expose necessary ports (if needed, adjust accordingly)
+EXPOSE 3000
+
+# Start the container and keep it running
+CMD ["/app/entrypoint.sh"]

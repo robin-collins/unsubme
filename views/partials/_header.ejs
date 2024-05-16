@@ -1,3 +1,4 @@
+<!-- /views/partials/_header.ejs -->
 <nav class="bg-gray-800 p-4">
   <div class="container mx-auto flex justify-between items-center">
     <a class="text-white text-2xl font-semibold" href="/">unsubme</a>
@@ -9,10 +10,16 @@
     <div class="hidden md:flex md:items-center md:space-x-6" id="navbar">
       <a class="text-gray-300 hover:text-white" href="/">Home</a>
       <% if (session && session.userId) { %>
-      <a class="text-gray-300 hover:text-white" href="/imap/add-imap-account">Add Imap Account</a>
-      <a class="text-gray-300 hover:text-white" href="/auth/logout">Logout</a>
+        <% if (hasImapAccount) { %>
+          <a class="text-gray-300 hover:text-white" href="/imap/fetch-emails">Fetch Emails</a>
+        <% } %>
+        <a class="text-gray-300 hover:text-white" href="/unsubscribe/manage">Manage Unsubscribe Links</a>
+        <a class="text-gray-300 hover:text-white" href="/account/manage">
+          <i class="fas fa-cog"></i> Manage Account
+        </a>
+        <a class="text-gray-300 hover:text-white" href="/auth/logout">Logout</a>
       <% } else { %>
-      <a class="text-gray-300 hover:text-white" href="/auth/login">Login</a>
+        <a class="text-gray-300 hover:text-white" href="/auth/login">Login</a>
       <% } %>
     </div>
   </div>

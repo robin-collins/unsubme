@@ -1,0 +1,48 @@
+name: unsubme
+
+services:
+  app:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=mongodb://mongo:27017/unsubme
+      - SESSION_SECRET=your_secret_key
+    depends_on:
+      - mongo
+      - playwright
+      - redis
+    volumes:
+      - .:/app
+    links:
+      - playwright
+      - redis
+
+  mongo:
+    image: mongo:4.4
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+
+  playwright:
+    build:
+      context: .
+      dockerfile: Dockerfile.playwright
+    shm_size: 2gb
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4      
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+
+
+volumes:
+  mongo-data:

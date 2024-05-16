@@ -1,8 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <%- include('partials/_head') %>
-</head>
+<%- include('partials/_head') %>
 <body class="bg-gray-100">
   <%- include('partials/_header') %>
   <div class="container mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
@@ -10,23 +8,67 @@
     <form action="/imap/imap-info" method="POST" class="space-y-4">
       <div>
         <label for="emailAddress" class="block text-sm font-medium text-gray-700">Email Address</label>
-        <input type="email" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="emailAddress" name="emailAddress" required>
+        <input type="email" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="emailAddress" name="emailAddress" value="<%= emailSettings ? emailSettings.username : '' %>" required>
       </div>
       <div>
         <label for="imapServer" class="block text-sm font-medium text-gray-700">IMAP Server</label>
-        <input type="text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="imapServer" name="imapServer" required>
+        <input type="text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="imapServer" name="imapServer" value="<%= emailSettings ? emailSettings.address : '' %>" required>
       </div>
       <div>
         <label for="port" class="block text-sm font-medium text-gray-700">Port</label>
-        <input type="number" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="port" name="port" required>
+        <input type="number" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="port" name="port" value="<%= emailSettings ? emailSettings.port : '' %>" required>
       </div>
       <div>
         <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
         <input type="password" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="password" name="password" required>
       </div>
+      <div>
+        <label for="schedule" class="block text-sm font-medium text-gray-700">Schedule</label>
+        <input type="text" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" id="schedule" name="schedule" required>
+        <small class="text-gray-500">Example: "0 1 * * *" (Once a day at 1 am)</small>
+      </div>
       <button type="submit" class="w-full inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Submit</button>
     </form>
   </div>
   <%- include('partials/_footer') %>
+  <script>
+    function isValidEmail(email) {
+      const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return re.test(email);
+    }
+
+    async function fetchEmailSettings() {
+      const emailAddress = document.getElementById('emailAddress').value;
+      if (!isValidEmail(emailAddress)) {
+        console.log('Invalid email address');
+        return;
+      }
+      console.log(`Fetching settings for email: ${emailAddress}`);
+
+      try {
+        const response = await fetch('/imap/fetch-email-settings', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ emailAddress }),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch email settings: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        console.log('Fetched email settings:', data);
+
+        document.getElementById('imapServer').value = data.address;
+        document.getElementById('port').value = data.port;
+      } catch (error) {
+        console.error('Error fetching email settings:', error);
+      }
+    }
+
+    document.getElementById('emailAddress').addEventListener('blur', fetchEmailSettings);
+  </script>
 </body>
 </html>

@@ -5,6 +5,10 @@ const session = require("express-session");
 const MongoStore = require('connect-mongo');
 const authRoutes = require("./routes/authRoutes");
 const imapRoutes = require("./routes/imapRoutes");
+const unsubscribeRoutes = require("./routes/unsubscribeRoutes");
+const accountRoutes = require('./routes/accountRoutes');
+const User = require("./models/User");
+const ImapAccount = require("./models/ImapAccount");
 
 if (!process.env.DATABASE_URL || !process.env.SESSION_SECRET) {
   console.error("Error: config environment variables not set. Please create/edit .env configuration file.");
@@ -46,6 +50,35 @@ app.use(
   })
 );
 
+// Middleware to check if there are any users in the database
+app.use(async (req, res, next) => {
+  try {
+    const userCount = await User.countDocuments();
+    res.locals.hasImapAccount = false; // Set default value for hasImapAccount
+
+    if (userCount === 0 && req.path !== '/auth/register' && req.path !== '/auth/login') {
+      return res.redirect('/auth/register');
+    }
+
+    if (req.session && req.session.userId) {
+      const user = await User.findById(req.session.userId);
+      if (!user) {
+        return res.status(401).send('User not found');
+      }
+      req.user = user;
+
+      // Check if user has an IMAP account
+      const imapAccount = await ImapAccount.findOne({ userID: req.session.userId });
+      res.locals.hasImapAccount = !!imapAccount;
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error checking user count:', error);
+    next(error);
+  }
+});
+
 // Logging session creation and destruction
 app.use((req, res, next) => {
   const sess = req.session;
@@ -68,6 +101,12 @@ app.use('/auth', authRoutes);
 
 // IMAP Routes
 app.use('/imap', imapRoutes);
+
+// Unsubscribe Routes
+app.use('/unsubscribe', unsubscribeRoutes);
+
+// Account Routes
+app.use('/account', accountRoutes);
 
 // Root path response
 app.get("/", (req, res) => {
