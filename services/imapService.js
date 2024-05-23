@@ -1,4 +1,4 @@
-const Imap = require('imap');
+const { ImapFlow } = require('imapflow');
 const { decode } = require('iconv-lite');
 const Email = require('../models/Email');
 const UnsubscribeLink = require('../models/UnsubscribeLink');
@@ -77,184 +77,118 @@ function extractUnsubscribeLinks(emailBodyText) {
 }
 
 const fetchEmails = async (imapConfig, accountID) => {
-  const config = {
-    user: imapConfig.email,
-    password: imapConfig.password,
+  const client = new ImapFlow({
     host: imapConfig.server,
     port: imapConfig.port,
-    tls: true,
-    authTimeout: 3000,
-  };
+    secure: true,
+    auth: {
+      user: imapConfig.email,
+      pass: imapConfig.password,
+    },
+    logger: {
+      debug: () => {},
+      info: () => {},
+      warn: console.warn,
+      error: console.error,
+    },
+  });
 
-  const imap = new Imap(config);
+  try {
+    await client.connect();
+    console.log('Connected to IMAP server');
 
-  const openInbox = () => {
-    return new Promise((resolve, reject) => {
-      imap.openBox('INBOX', false, (err, box) => {
-        if (err) reject(err);
-        else resolve(box);
-      });
-    });
-  };
+    // Select the INBOX mailbox
+    const mailbox = await client.mailboxOpen('INBOX');
+    console.log('Mailbox opened:', mailbox.path);
 
-  const parseEmail = async (msg, uid) => {
-    return new Promise((resolve, reject) => {
-      const buffer = [];
+    // Get the list of messages in the mailbox
+    const messages = await client.search({ all: true }, { uid: true });
+    console.log('Total messages:', messages.length);
 
-      msg.on('body', (stream) => {
-        stream.on('data', (chunk) => {
-          buffer.push(chunk);
-        });
+    // Fetch already processed UIDs from the database
+    const processedEmails = await Email.find({ accountID }, 'uid');
+    const processedUIDs = processedEmails.map(email => email.uid);
 
-        stream.once('end', async () => {
-          try {
-            const parsed = await simpleParser(Buffer.concat(buffer));
-            resolve({
-              from: parsed.from.text,
-              to: parsed.to.text,
-              subject: parsed.subject || 'No Subject',
-              date: parsed.date || new Date(),
-              text: parsed.text,
-              html: parsed.html,
-              uid: uid,
-            });
-          } catch (error) {
-            reject(error);
-          }
-        });
-      });
+    // Filter out already processed UIDs
+    const newUIDs = messages.filter(uid => !processedUIDs.includes(uid));
+    console.log('New messages:', newUIDs.length);
 
-      msg.once('error', (err) => {
-        reject(err);
-      });
-    });
-  };
+    if (newUIDs.length === 0) {
+      console.log('No new emails to process.');
+      await client.logout();
+      return;
+    }
 
-  const fetchEmailsByUID = (uids) => {
-    return new Promise((resolve, reject) => {
-      const fetchOptions = {
-        bodies: '',
-        struct: true,
-        markSeen: false,
-      };
-
-      const fetchStream = imap.fetch(uids, fetchOptions);
-      const emails = [];
-
-      fetchStream.on('message', (msg, seqno) => {
-        const uid = uids[seqno - 1];
-        parseEmail(msg, uid)
-          .then((email) => {
-            emails.push(email);
-          })
-          .catch((err) => {
-            console.error('Parsing error:', err);
-          });
-      });
-
-      fetchStream.once('error', (err) => {
-        reject(err);
-      });
-
-      fetchStream.once('end', () => {
-        resolve(emails);
-      });
-    });
-  };
-
-  const getUIDs = () => {
-    return new Promise((resolve, reject) => {
-      imap.search(['ALL'], (err, results) => {
-        if (err) reject(err);
-        else resolve(results);
-      });
-    });
-  };
-
-  return new Promise((resolve, reject) => {
-    imap.once('ready', async () => {
+    // Fetch the details of each new message
+    for (const uid of newUIDs) {
       try {
-        await openInbox();
-        const uids = await getUIDs();
+        const message = await client.fetchOne(
+          uid,
+          { body: true, envelope: true, source: true },
+          { uid: true }
+        );
+        console.log('Fetched message UID:', message.uid);
 
-        // Fetch already processed UIDs from the database
-        const processedEmails = await Email.find({ accountID }, 'uid');
-        const processedUIDs = processedEmails.map(email => email.uid);
+        // Parse the message body and extract relevant information
+        const parsed = await simpleParser(message.source);
+        const email = {
+          from: parsed.from.text,
+          to: parsed.to.text,
+          subject: parsed.subject || 'No Subject',
+          date: parsed.date || new Date(),
+          text: parsed.text,
+          html: parsed.html,
+          uid: message.uid,
+        };
 
-        // Filter out already processed UIDs
-        const newUIDs = uids.filter(uid => !processedUIDs.includes(uid));
+        const companyDomain = getPrimaryDomain(email.from);
+        const isMarketingEmail = email.html ? extractUnsubscribeLinks(email.html).length > 0 : false;
 
-        if (newUIDs.length === 0) {
-          console.log('No new emails to process.');
-          imap.end();
-          return resolve();
-        }
+        const emailModel = new Email({
+          accountID: accountID,
+          uid: email.uid,
+          from: email.from,
+          to: email.to,
+          subject: email.subject || 'No Subject',
+          date: email.date || new Date(),
+          body: email.text || 'No Body',
+          companyDomain: companyDomain,
+          isMarketingEmail: isMarketingEmail,
+        });
 
-        const emails = await fetchEmailsByUID(newUIDs);
+        const savedEmail = await emailModel.save();
+        console.log(`Email from ${email.from}: ${email.subject} saved to database.`);
 
-        for (const email of emails) {
-          const companyDomain = getPrimaryDomain(email.from);
-          const isMarketingEmail = email.html ? extractUnsubscribeLinks(email.html).length > 0 : false;
-
-          const emailModel = new Email({
-            accountID: accountID,
-            uid: email.uid,
-            from: email.from,
-            to: email.to,
-            subject: email.subject || 'No Subject',
-            date: email.date || new Date(),
-            body: email.text || 'No Body',
-            companyDomain: companyDomain,
-            isMarketingEmail: isMarketingEmail, // Set isMarketingEmail based on unsubscribe links
-          });
-
-          const savedEmail = await emailModel.save();
-          console.log(`Email from ${email.from}: ${email.subject} saved to database.`);
-
-          if (isMarketingEmail) {
-            const unsubscribeLinks = extractUnsubscribeLinks(email.html);
-            const linksArray = unsubscribeLinks.split('|| ').filter(link => link);
-            for (const link of linksArray) {
-              try {
-                const existingLink = await UnsubscribeLink.findOne({ link });
-                if (!existingLink) {
-                  const unsubscribeLinkModel = new UnsubscribeLink({
-                    emailID: savedEmail._id,
-                    link,
-                  });
-                  await unsubscribeLinkModel.save();
-                } else {
-                  console.log(`Unsubscribe link ${link} already exists in the database.`);
-                }
-              } catch (linkError) {
-                console.error('Error saving unsubscribe link:', linkError.message);
+        if (isMarketingEmail) {
+          const unsubscribeLinks = extractUnsubscribeLinks(email.html);
+          const linksArray = unsubscribeLinks.split('|| ').filter(link => link);
+          for (const link of linksArray) {
+            try {
+              const existingLink = await UnsubscribeLink.findOne({ link });
+              if (!existingLink) {
+                const unsubscribeLinkModel = new UnsubscribeLink({
+                  emailID: savedEmail._id,
+                  link,
+                });
+                await unsubscribeLinkModel.save();
+              } else {
+                console.log(`Unsubscribe link ${link} already exists in the database.`);
               }
+            } catch (linkError) {
+              console.error('Error saving unsubscribe link:', linkError.message);
             }
           }
         }
-
-        imap.end();
-        console.log('IMAP connection closed.');
-        resolve();
-      } catch (error) {
-        console.error('Error processing emails:', error.message);
-        console.error(error.stack);
-        imap.end();
-        reject(error);
+      } catch (messageError) {
+        console.error('Error processing message:', messageError);
       }
-    });
+    }
 
-    imap.once('error', (err) => {
-      console.error('IMAP error:', err);
-      reject(err);
-    });
-
-    imap.once('end', () => {
-      console.log('IMAP connection ended.');
-    });
-
-    imap.connect();
-  });
+    await client.logout();
+    console.log('Logged out from IMAP server');
+  } catch (error) {
+    console.error('Error connecting to IMAP server:', error);
+  }
 };
 
 module.exports = {
