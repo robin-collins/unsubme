@@ -1,4 +1,4 @@
-// /controllers/imapController.js
+// controllers/imapController.js
 const ImapAccount = require('../models/ImapAccount');
 const { fetchEmails: fetchEmailsFromService } = require('../services/imapService');
 const { getEmailSettings } = require('../services/emailSettingsService');
@@ -53,7 +53,7 @@ const fetchEmailSettings = async (req, res) => {
   }
 };
 
-const fetchEmails = async (req, res) => {
+const fetchEmails = async (req, res, userId) => {
   try {
     const imapAccounts = await ImapAccount.find({ userID: req.session.userId });
     if (!imapAccounts || imapAccounts.length === 0) {
@@ -66,7 +66,7 @@ const fetchEmails = async (req, res) => {
         port: imapAccount.port,
         password: imapAccount.password
       };
-      await fetchEmailsFromService(imapInfo, imapAccount._id);
+      await fetchEmailsFromService(imapInfo, imapAccount._id, userId);
     }
     res.redirect('/account/manage');
   } catch (error) {
@@ -75,23 +75,9 @@ const fetchEmails = async (req, res) => {
   }
 };
 
-const editImapAccount = async (req, res) => {
-  try {
-    const imapAccount = await ImapAccount.findById(req.params.id);
-    if (!imapAccount) {
-      return res.status(404).send('IMAP account not found');
-    }
-    res.render('imap-info', { imapAccount });
-  } catch (error) {
-    console.error('Error fetching IMAP account:', error);
-    res.status(500).send('Internal Server Error');
-  }
-};
-
 module.exports = {
   showAddImapAccount,
   addImapAccount,
   fetchEmailSettings,
-  fetchEmails,
-  editImapAccount
+  fetchEmails
 };

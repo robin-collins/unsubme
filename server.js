@@ -1,134 +1,39 @@
-require("dotenv").config();
-const mongoose = require("mongoose");
-const express = require("express");
-const session = require("express-session");
-const MongoStore = require('connect-mongo');
-const authRoutes = require("./routes/authRoutes");
-const imapRoutes = require("./routes/imapRoutes");
-const unsubscribeRoutes = require("./routes/unsubscribeRoutes");
-const accountRoutes = require('./routes/accountRoutes');
-const analyticsRoutes = require('./routes/analyticsRoutes'); // Ensure this is correct
-const User = require("./models/User");
+// server.js
+const http = require('http');
+const { Server } = require("socket.io");
+const app = require('./app'); // Import the Express app
 const ImapAccount = require("./models/ImapAccount");
+const { fetchEmails } = require("./services/imapService");
 
-if (!process.env.DATABASE_URL || !process.env.SESSION_SECRET) {
-  console.error("Error: config environment variables not set. Please create/edit .env configuration file.");
-  process.exit(1);
-}
-
-const app = express();
 const port = process.env.PORT || 3000;
+const server = http.createServer(app);
+const io = new Server(server);
 
-// Middleware to parse request bodies
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+io.on('connection', (socket) => {
+  console.log('a user connected');
 
-// Setting the templating engine to EJS
-app.set("view engine", "ejs");
-
-// Serve static files
-app.use(express.static("public"));
-
-// Database connection
-mongoose
-  .connect(process.env.DATABASE_URL)
-  .then(() => {
-    console.log("Database connected successfully");
-  })
-  .catch((err) => {
-    console.error(`Database connection error: ${err.message}`);
-    console.error(err.stack);
-    process.exit(1);
+  socket.on('start-fetch-emails', async () => {
+    const userId = socket.id; // Use the socket ID to identify the user
+    // Fetch emails for the user
+    const imapAccounts = await ImapAccount.find({ userID: userId });
+    for (const imapAccount of imapAccounts) {
+      const imapInfo = {
+        email: imapAccount.email,
+        server: imapAccount.server,
+        port: imapAccount.port,
+        password: imapAccount.password
+      };
+      await fetchEmails(imapInfo, imapAccount._id, userId);
+    }
   });
 
-// Session configuration with connect-mongo
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: process.env.DATABASE_URL }),
-  })
-);
-
-// Middleware to check if there are any users in the database
-app.use(async (req, res, next) => {
-  try {
-    const userCount = await User.countDocuments();
-    res.locals.hasImapAccount = false; // Set default value for hasImapAccount
-
-    if (userCount === 0 && req.path !== '/auth/register' && req.path !== '/auth/login') {
-      return res.redirect('/auth/register');
-    }
-
-    if (req.session && req.session.userId) {
-      const user = await User.findById(req.session.userId);
-      if (!user) {
-        return res.status(401).send('User not found');
-      }
-      req.user = user;
-
-      // Check if user has an IMAP account
-      const imapAccount = await ImapAccount.findOne({ userID: req.session.userId });
-      res.locals.hasImapAccount = !!imapAccount;
-    }
-
-    next();
-  } catch (error) {
-    console.error('Error checking user count:', error);
-    next(error);
-  }
+  socket.on('disconnect', () => {
+    console.log('user disconnected');
+  });
 });
 
-// Logging session creation and destruction
-app.use((req, res, next) => {
-  const sess = req.session;
-  // Make session available to all views
-  res.locals.session = sess;
-  if (!sess.views) {
-    sess.views = 1;
-    console.log("Session created at: ", new Date().toISOString());
-  } else {
-    sess.views++;
-    console.log(
-      `Session accessed again at: ${new Date().toISOString()}, Views: ${sess.views}, User ID: ${sess.userId || '(unauthenticated)'}`
-    );
-  }
-  next();
-});
-
-// Authentication Routes
-app.use('/auth', authRoutes);
-
-// IMAP Routes
-app.use('/imap', imapRoutes);
-
-// Unsubscribe Routes
-app.use('/unsubscribe', unsubscribeRoutes);
-
-// Account Routes
-app.use('/account', accountRoutes);
-
-// Analytics Routes
-app.use('/dashboard', analyticsRoutes); // New route
-
-// Root path response
-app.get("/", (req, res) => {
-  res.render("index");
-});
-
-// If no routes handled the request, it's a 404
-app.use((req, res, next) => {
-  res.status(404).send("Page not found.");
-});
-
-// Error handling
-app.use((err, req, res, next) => {
-  console.error(`Unhandled application error: ${err.message}`);
-  console.error(err.stack);
-  res.status(500).send("There was an error serving your request.");
-});
-
-app.listen(port, () => {
+server.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
 });
+
+module.exports = { io }; // Export the io instance for use in other modules

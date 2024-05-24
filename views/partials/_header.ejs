@@ -12,7 +12,7 @@
       <% if (session && session.userId) { %>
         <a class="text-gray-300 hover:text-white" href="/dashboard">Dashboard</a>
         <% if (hasImapAccount) { %>
-          <a class="text-gray-300 hover:text-white" href="/imap/fetch-emails">Fetch Emails</a>
+          <a class="text-gray-300 hover:text-white" href="#" id="fetchEmailsLink">Fetch Emails</a>
         <% } %>
         <a class="text-gray-300 hover:text-white" href="/unsubscribe/manage">Manage Unsubscribe Links</a>
         <a class="text-gray-300 hover:text-white" href="/account/manage">
@@ -29,5 +29,10 @@
   document.getElementById('navbar-toggle').addEventListener('click', function () {
     const navbar = document.getElementById('navbar');
     navbar.classList.toggle('hidden');
+  });
+
+  document.getElementById('fetchEmailsLink').addEventListener('click', function (event) {
+    event.preventDefault(); // Prevent the default link behavior
+    socket.emit('start-fetch-emails'); // Emit an event to start fetching emails
   });
 </script>

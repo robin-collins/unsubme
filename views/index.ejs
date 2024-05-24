@@ -1,15 +1,47 @@
 <!DOCTYPE html>
 <html lang="en">
 <%- include('partials/_head') %>
-  <body class="bg-gray-100">
-<%- include('partials/_header') %>
-    <main role="main" class="container mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
-      <div class="text-center">
-        <h1 class="text-4xl font-semibold mb-4">unsubme</h1>
-        <p class="text-lg text-gray-700">Easily manage your email subscriptions</p>
+<body class="bg-gray-100">
+  <%- include('partials/_header') %>
+  <main role="main" class="container mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
+    <div class="text-center">
+      <h1 class="text-4xl font-semibold mb-4">unsubme</h1>
+      <p class="text-lg text-gray-700">Easily manage your email subscriptions</p>
+    </div>
+    <div id="progressContainer" class="text-center mt-6" style="display: none;">
+      <p id="progressText">Fetching emails...</p>
+      <div class="w-full bg-gray-200 rounded-full dark:bg-gray-700">
+        <div id="progressBar" class="bg-blue-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full" style="width: 0%">0%</div>
       </div>
-    </main>
-  </body>
-<%- include('partials/_footer') %>
-  <script src="/js/main.js"></script>
+    </div>
+  </main>
+  <%- include('partials/_footer') %>
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    // Show progress container when fetching emails starts
+    socket.on('connect', function() {
+      console.log('Connected to WebSocket');
+    });
+
+    // Update progress bar
+    socket.on('fetch-progress', function(data) {
+      document.getElementById('progressContainer').style.display = 'block';
+      const progressText = `Fetching email ${data.current} of ${data.total}`;
+      const progressBar = `${data.progress}%`;
+
+      document.getElementById('progressText').innerText = progressText;
+      document.getElementById('progressBar').style.width = progressBar;
+      document.getElementById('progressBar').innerText = progressBar;
+
+      // Hide progress container when fetching is complete
+      if (data.progress === 100) {
+        setTimeout(() => {
+          document.getElementById('progressContainer').style.display = 'none';
+        }, 2000); // Wait 2 seconds before hiding
+      }
+    });
+  </script>
+</body>
 </html>

@@ -1,7 +1,6 @@
-// routes/analyticsRoutes.js
 const express = require('express');
 const router = express.Router();
-const { getDashboardData } = require('../controllers/analyticsController');
+const { getDashboardData } = require('../controllers/analytics');
 
 router.get('/', getDashboardData);
 

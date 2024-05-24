@@ -1,6 +1,6 @@
 const express = require('express');
 const { isAuthenticated } = require('./middleware/authMiddleware');
-const accountController = require('../controllers/accountController');
+const accountController = require('../controllers/account');
 const router = express.Router();
 
 router.get('/manage', isAuthenticated, accountController.manageAccount);
