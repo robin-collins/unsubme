@@ -1,4 +1,4 @@
-// /controllers/authController.js
+// controllers/authController.js
 const User = require('../models/User');
 const bcrypt = require('bcrypt');
 
@@ -18,7 +18,7 @@ const register = async (req, res) => {
 };
 
 const showLogin = (req, res) => {
-  res.render('login');
+  res.render('login', { query: req.query });
 };
 
 const login = async (req, res) => {
@@ -33,7 +33,9 @@ const login = async (req, res) => {
       return res.status(400).send('Password is incorrect');
     }
     req.session.userId = user._id;
-    return res.redirect('/');
+    const redirectTo = req.session.redirectTo || '/dashboard';
+    delete req.session.redirectTo;
+    return res.redirect(redirectTo);
   } catch (error) {
     console.error('Login error:', error);
     return res.status(500).send(error.message);

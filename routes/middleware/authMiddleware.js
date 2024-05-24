@@ -1,3 +1,4 @@
+// routes/middleware/authMiddleware.js
 const User = require('../../models/User');
 const ImapAccount = require('../../models/ImapAccount');
 
@@ -21,7 +22,8 @@ const isAuthenticated = async (req, res, next) => {
       return res.status(500).send('Internal Server Error');
     }
   } else {
-    return res.status(401).send('You are not authenticated');
+    req.session.redirectTo = req.originalUrl;
+    return res.redirect('/auth/login?message=To view the Dashboard, you must first login.');
   }
 };
 

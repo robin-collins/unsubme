@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const imapRoutes = require("./routes/imapRoutes");
 const unsubscribeRoutes = require("./routes/unsubscribeRoutes");
 const accountRoutes = require('./routes/accountRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes'); // Ensure this is correct
 const User = require("./models/User");
 const ImapAccount = require("./models/ImapAccount");
 
@@ -107,6 +108,9 @@ app.use('/unsubscribe', unsubscribeRoutes);
 
 // Account Routes
 app.use('/account', accountRoutes);
+
+// Analytics Routes
+app.use('/dashboard', analyticsRoutes); // New route
 
 // Root path response
 app.get("/", (req, res) => {

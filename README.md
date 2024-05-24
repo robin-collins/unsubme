@@ -65,6 +65,13 @@ The application is built using the following technologies:
    ```
 6. Open your browser and navigate to `http://localhost:3000`
 
+### Development
+
+5. Start the application:
+    ```bash
+    npm run dev
+    ```
+
 ## License
 
 Copyright (c) 2024.

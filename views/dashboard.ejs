@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<%- include('partials/_head') %>
+<body class="bg-gray-100">
+  <%- include('partials/_header') %>
+  <div class="container mx-auto mt-10 p-6 bg-white shadow-md rounded-lg">
+    <h2 class="text-3xl font-semibold text-center mb-6">Dashboard</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+      <div class="bg-blue-600 text-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold">Total Emails</h3>
+        <p class="text-3xl"><%= totalEmails %></p>
+      </div>
+      <div class="bg-green-600 text-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold">Marketing Emails</h3>
+        <p class="text-3xl"><%= totalMarketingEmails %></p>
+      </div>
+      <div class="bg-orange-600 text-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold">IMAP Accounts</h3>
+        <p class="text-3xl"><%= totalImapAccounts %></p>
+      </div>
+      <div class="bg-red-600 text-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold">SMTP Accounts</h3>
+        <p class="text-3xl"><%= totalSmtpAccounts %></p>
+      </div>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold mb-4">Top 10 Email Domains for <%= imapAccountEmail %></h3>
+        <ul class="space-y-2">
+          <% topEmailDomains.forEach(domain => { %>
+            <li class="bg-gray-100 p-2 rounded-lg flex justify-between">
+              <span><%- domain._id %></span>
+              <span><%= domain.count %> emails</span>
+            </li>
+          <% }) %>
+        </ul>
+      </div>
+      <div class="bg-white p-4 rounded-lg shadow-md">
+        <h3 class="text-xl font-semibold mb-4">Marketing Emails Distribution</h3>
+        <canvas id="marketingEmailsChart" style="max-height: 400px;"></canvas>
+      </div>
+    </div>
+    <div class="bg-white p-4 rounded-lg shadow-md mt-6">
+      <h3 class="text-xl font-semibold mb-4">Emails Received in the Last 30 Days</h3>
+      <canvas id="emailsPerDayChart" style="max-height: 400px;"></canvas>
+    </div>
+  </div>
+  <%- include('partials/_footer') %>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      var marketingCtx = document.getElementById('marketingEmailsChart').getContext('2d');
+      var marketingChart = new Chart(marketingCtx, {
+        type: 'pie',
+        data: {
+          labels: ['Marketing Emails', 'Other Emails'],
+          datasets: [{
+            data: [<%= totalMarketingEmails %>, <%= totalEmails - totalMarketingEmails %>],
+            backgroundColor: ['#F59E0B', '#3B82F6']
+          }]
+        }
+      });
+
+      var emailsPerDayCtx = document.getElementById('emailsPerDayChart').getContext('2d');
+      var emailsPerDayChart = new Chart(emailsPerDayCtx, {
+        type: 'bar',
+        data: {
+          labels: <%- JSON.stringify(dates) %>,
+          datasets: [
+            {
+              label: 'Total Emails',
+              data: <%- JSON.stringify(totalEmailsPerDay) %>,
+              backgroundColor: '#3B82F6'
+            },
+            {
+              label: 'Marketing Emails',
+              data: <%- JSON.stringify(marketingEmailsPerDay) %>,
+              backgroundColor: '#F59E0B'
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          plugins: {
+            tooltip: {
+              mode: 'index',
+              intersect: false
+            }
+          },
+          scales: {
+            x: {
+              stacked: true,
+              title: {
+                display: true,
+                text: 'Date'
+              }
+            },
+            y: {
+              stacked: true,
+              title: {
+                display: true,
+                text: 'Number of Emails'
+              },
+              beginAtZero: true
+            }
+          }
+        }
+      });
+    });
+  </script>
+</body>
+</html>

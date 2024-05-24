@@ -10,6 +10,7 @@
     <div class="hidden md:flex md:items-center md:space-x-6" id="navbar">
       <a class="text-gray-300 hover:text-white" href="/">Home</a>
       <% if (session && session.userId) { %>
+        <a class="text-gray-300 hover:text-white" href="/dashboard">Dashboard</a>
         <% if (hasImapAccount) { %>
           <a class="text-gray-300 hover:text-white" href="/imap/fetch-emails">Fetch Emails</a>
         <% } %>
@@ -24,4 +25,9 @@
     </div>
   </div>
 </nav>
-<script src="/js/navbar-toggle.js"></script>
+<script>
+  document.getElementById('navbar-toggle').addEventListener('click', function () {
+    const navbar = document.getElementById('navbar');
+    navbar.classList.toggle('hidden');
+  });
+</script>
