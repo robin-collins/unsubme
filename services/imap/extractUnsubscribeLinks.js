@@ -1,7 +1,8 @@
+// services/imap/extractUnsubscribeLinks.js
 const extractUrls = require("extract-urls");
 const isUrlValid = require('url-validation');
 const { replaceOutlookSafeURLs } = require('./imapUtils');
-const unsubscribePatterns = require('./unsubscribePatterns');
+const unsubscribePatterns = require('../unsubscribePatterns');
 
 /**
  * Extracts unsubscribe links from the email body text.

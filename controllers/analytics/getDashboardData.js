@@ -16,7 +16,7 @@ const getDashboardData = async (req, res) => {
   try {
     const imapAccount = await ImapAccount.findOne({ userID: req.session.userId });
     if (!imapAccount) {
-      return res.status(400).send('No IMAP accounts found for the user.');
+      return res.redirect('/imap/add-imap-account?message=No IMAP accounts found for the user.');
     }
 
     const totalEmails = await getTotalEmails();
@@ -28,8 +28,9 @@ const getDashboardData = async (req, res) => {
 
     const dates = getLast30Days();
     const { totalEmailsPerDay, marketingEmailsPerDay } = await getEmailCountsPerDay(dates, imapAccount._id);
-
+    const userId = req.session.userId || '';
     res.render('dashboard', {
+      userId,
       totalEmails,
       totalMarketingEmails,
       totalImapAccounts,

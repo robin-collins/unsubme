@@ -1,87 +1,11 @@
-// services/imapService.js
+// services/imap/fetchEmails.js
 const { ImapFlow } = require('imapflow');
-const { decode } = require('iconv-lite');
-const Email = require('../models/Email');
-const UnsubscribeLink = require('../models/UnsubscribeLink');
 const { simpleParser } = require('mailparser');
-const extractUrls = require("extract-urls");
-const isUrlValid = require('url-validation');
-const { URL } = require('url');
-const unsubscribePatterns = require('./unsubscribePatterns');
-const { io } = require('../server'); // Import the io instance
-
-/**
- * Extracts the primary domain from an email address.
- * @param {string} email - The email address to extract the domain from.
- * @returns {string} - The primary domain.
- */
-function getPrimaryDomain(email) {
-  try {
-    const domain = email.split('@')[1];
-    const domainParts = domain.split('.');
-    if (domainParts.length > 2) {
-      // Assuming the last two parts are the TLD and the primary domain
-      return `${domainParts[domainParts.length - 2]}.${domainParts[domainParts.length - 1]}`;
-    }
-    return domain;
-  } catch (error) {
-    console.error('Error extracting primary domain:', error);
-    return '';
-  }
-}
-
-/**
- * Parses the original URL from an Outlook safe link.
- * @param {string} url - The encoded Outlook safe link.
- * @returns {string} - The original URL.
- */
-function parseOutlookSafeURL(url) {
-  const urlQuery = "url=";
-  const urlIndex = url.indexOf(urlQuery) + urlQuery.length;
-  const dataQuery = "&data=";
-  const dataIndex = url.indexOf(dataQuery);
-
-  if (dataIndex === -1) {
-    return url.substring(urlIndex);
-  }
-
-  return url.substring(urlIndex, dataIndex);
-}
-
-/**
- * Replaces Outlook safe links in the provided text with their original URLs.
- * @param {string} text - The text containing Outlook safe links.
- * @returns {string} - The text with Outlook safe links replaced by original URLs.
- */
-function replaceOutlookSafeURLs(text) {
-  return text.replace(/https:\/\/[a-zA-Z0-9.-]*safelinks.protection.outlook.com\/\S+/g, match => {
-    return decodeURIComponent(parseOutlookSafeURL(match));
-  });
-}
-
-/**
- * Extracts unsubscribe links from the email body text.
- * @param {string} emailBodyText - The email body text.
- * @returns {string} - The unsubscribe links separated by "|| ".
- */
-function extractUnsubscribeLinks(emailBodyText) {
-  const cleanedText = replaceOutlookSafeURLs(emailBodyText); // Clean the text from Outlook safe links
-  const unsubscribeLinks = unsubscribePatterns.reduce((links, pattern) => {
-    const matches = cleanedText.match(pattern);
-    if (matches) {
-      matches.forEach(match => {
-        const urlMatch = extractUrls(match);
-        if (urlMatch) {
-          links.push(...urlMatch);
-        }
-      });
-    }
-    return links;
-  }, []);
-
-  const uniqueLinks = [...new Set(unsubscribeLinks.filter(link => isUrlValid(link)))];
-  return uniqueLinks.join("|| ");
-}
+const Email = require('../../models/Email');
+const UnsubscribeLink = require('../../models/UnsubscribeLink');
+const { extractUnsubscribeLinks } = require('./extractUnsubscribeLinks');
+const { getPrimaryDomain } = require('./imapUtils');
+const { getIo } = require('../socket');
 
 /**
  * Fetches emails from the IMAP server and saves them to the database.
@@ -122,19 +46,17 @@ const fetchEmails = async (imapConfig, accountID, userId) => {
     const newUIDs = messages.filter(uid => !processedUIDs.includes(uid));
     console.log('New messages:', newUIDs.length);
 
+    const io = getIo();
     if (newUIDs.length === 0) {
       console.log('No new emails to process.');
+      io.to(userId).emit('fetch-progress', { current: 0, total: 0, progress: 100 });
       await client.logout();
       return;
     }
 
     for (const [index, uid] of newUIDs.entries()) {
       try {
-        const message = await client.fetchOne(
-          uid,
-          { body: true, envelope: true, source: true },
-          { uid: true }
-        );
+        const message = await client.fetchOne(uid, { body: true, envelope: true, source: true }, { uid: true });
         console.log('Fetched message UID:', message.uid);
 
         const parsed = await simpleParser(message.source);
@@ -187,9 +109,10 @@ const fetchEmails = async (imapConfig, accountID, userId) => {
           }
         }
 
-        // Emit progress update
         const progress = Math.round(((index + 1) / newUIDs.length) * 100);
+        console.log(`Emitting progress: ${progress}%`);
         io.to(userId).emit('fetch-progress', { current: index + 1, total: newUIDs.length, progress });
+        console.log('Progress event emitted to user:', userId, 'for current:', index + 1, 'of total:', newUIDs.length);
       } catch (messageError) {
         console.error('Error processing message:', messageError);
       }

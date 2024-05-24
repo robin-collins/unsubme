@@ -2,5 +2,5 @@
   "watch": ["server.js", "controllers/", "models/", "routes/", "views/", "services/"],
   "ext": "js,json,ejs",
   "ignore": ["node_modules/"],
-  "exec": "node server.js"
+  "exec": "node --trace-warnings server.js"
 }

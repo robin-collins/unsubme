@@ -5,9 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js> logs/app.log 2>&1",
-    "dev": "nodemon --watch server.js --watch routes --watch views --watch public --ext js,json,ejs > logs/dev.log 2>&1",
+    "dev": "rm -f logs/dev.log && nodemon --watch server.js --watch routes --watch views --watch public --ext js,json,ejs > logs/dev.log 2>&1",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:css": "npx update-browserslist-db@latest && tailwindcss -i ./public/css/tailwind.css -o ./public/css/style.css"
+    "build:css": "real-favicon check-for-update --fail-on-update faviconData.json && npx update-browserslist-db@latest && tailwindcss -i ./public/css/tailwind.css -o ./public/css/style.css"
   },
   "keywords": [],
   "author": "",
@@ -25,6 +25,7 @@
     "ejs": "^3.1.10",
     "express": "^4.19.2",
     "express-session": "^1.18.0",
+    "express-socket.io-session": "^1.3.5",
     "extract-urls": "^1.4.1",
     "get-urls": "^12.1.0",
     "imap": "^0.8.19",

@@ -1,7 +1,10 @@
-<!-- /views/partials/_header.ejs -->
+<!-- views/partials/_header.ejs -->
 <nav class="bg-gray-800 p-4">
   <div class="container mx-auto flex justify-between items-center">
-    <a class="text-white text-2xl font-semibold" href="/">unsubme</a>
+    <a class="flex items-center" href="/">
+      <img src="/images/favicon.svg" alt="Logo" class="w-8 h-8 mr-2">
+      <span class="text-white text-2xl font-semibold">unsubme</span>
+    </a>
     <button class="text-white md:hidden" id="navbar-toggle">
       <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path>
@@ -25,14 +28,11 @@
     </div>
   </div>
 </nav>
-<script>
-  document.getElementById('navbar-toggle').addEventListener('click', function () {
-    const navbar = document.getElementById('navbar');
-    navbar.classList.toggle('hidden');
-  });
+<!-- views/partials/_progressBar.ejs -->
+<div id="progressContainer" class="text-center mt-6" style="display: none;">
+  <p id="progressText">Fetching emails...</p>
+  <div class="w-full bg-gray-200 rounded-full dark:bg-gray-700">
+    <div id="progressBar" class="bg-blue-600 text-xs font-medium text-blue-100 text-center p-0.5 leading-none rounded-full" style="width: 0%">0%</div>
+  </div>
+</div>
 
-  document.getElementById('fetchEmailsLink').addEventListener('click', function (event) {
-    event.preventDefault(); // Prevent the default link behavior
-    socket.emit('start-fetch-emails'); // Emit an event to start fetching emails
-  });
-</script>

@@ -1,12 +1,23 @@
-// controllers/imapController.js
+const mongoose = require('mongoose');
 const ImapAccount = require('../models/ImapAccount');
-const { fetchEmails: fetchEmailsFromService } = require('../services/imapService');
+const { fetchEmails: fetchEmailsFromService } = require('../services/imap');
 const { getEmailSettings } = require('../services/emailSettingsService');
 
+/**
+ * Renders the Add IMAP Account page.
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ */
 const showAddImapAccount = (req, res) => {
-  res.render('imap-info', { imapAccount: null, emailSettings: null });
+  const message = req.query.message || null;
+  res.render('imap-info', { imapAccount: null, emailSettings: null, message });
 };
 
+/**
+ * Adds a new IMAP account.
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ */
 const addImapAccount = async (req, res) => {
   try {
     const { emailAddress, imapServer, port, password, schedule } = req.body;
@@ -17,8 +28,9 @@ const addImapAccount = async (req, res) => {
         return res.status(400).send(`${field} is required.`);
       }
     }
+
     const imapAccount = new ImapAccount({
-      userID: req.session.userId,
+      userID: new mongoose.Types.ObjectId(req.session.userId), // Ensure userID is a valid ObjectId
       email: emailAddress,
       server: imapServer,
       port: parseInt(port, 10),
@@ -38,6 +50,11 @@ const addImapAccount = async (req, res) => {
   }
 };
 
+/**
+ * Fetches email settings for the given email address.
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ */
 const fetchEmailSettings = async (req, res) => {
   try {
     const { emailAddress } = req.body;
@@ -53,11 +70,17 @@ const fetchEmailSettings = async (req, res) => {
   }
 };
 
+/**
+ * Fetches emails from the IMAP server.
+ * @param {Object} req - The request object.
+ * @param {Object} res - The response object.
+ * @param {string} userId - The user ID.
+ */
 const fetchEmails = async (req, res, userId) => {
   try {
-    const imapAccounts = await ImapAccount.find({ userID: req.session.userId });
+    const imapAccounts = await ImapAccount.find({ userID: new mongoose.Types.ObjectId(req.session.userId) }); // Ensure userID is a valid ObjectId
     if (!imapAccounts || imapAccounts.length === 0) {
-      return res.status(400).send('No IMAP accounts found for the user.');
+      return res.redirect('/imap/add-imap-account?message=No IMAP accounts found for the user.');
     }
     for (const imapAccount of imapAccounts) {
       const imapInfo = {

@@ -1,9 +1,11 @@
+// services/imap/fetchEmails.js
 const { ImapFlow } = require('imapflow');
 const { simpleParser } = require('mailparser');
 const Email = require('../../models/Email');
 const UnsubscribeLink = require('../../models/UnsubscribeLink');
-const { io } = require('../../server'); // Import the io instance
-const { extractUnsubscribeLinks, replaceOutlookSafeURLs, getPrimaryDomain } = require('./imapUtils');
+const { extractUnsubscribeLinks } = require('./extractUnsubscribeLinks');
+const { getPrimaryDomain } = require('./imapUtils');
+const { getIo } = require('../socket');
 
 /**
  * Fetches emails from the IMAP server and saves them to the database.
@@ -44,29 +46,28 @@ const fetchEmails = async (imapConfig, accountID, userId) => {
     const newUIDs = messages.filter(uid => !processedUIDs.includes(uid));
     console.log('New messages:', newUIDs.length);
 
+    const io = getIo();
     if (newUIDs.length === 0) {
       console.log('No new emails to process.');
+      io.to(userId).emit('fetch-progress', { current: 0, total: 0, progress: 100 });
       await client.logout();
       return;
     }
 
     for (const [index, uid] of newUIDs.entries()) {
       try {
-        const message = await client.fetchOne(
-          uid,
-          { body: true, envelope: true, source: true },
-          { uid: true }
-        );
+        const message = await client.fetchOne(uid, { body: true, envelope: true, source: true }, { uid: true });
         console.log('Fetched message UID:', message.uid);
 
         const parsed = await simpleParser(message.source);
+
         const email = {
-          from: parsed.from.text,
-          to: parsed.to.text,
+          from: parsed.from?.text || 'Unknown Sender',
+          to: parsed.to?.text || 'Unknown Recipient',
           subject: parsed.subject || 'No Subject',
           date: parsed.date || new Date(),
-          text: parsed.text,
-          html: parsed.html,
+          text: parsed.text || 'No Text Content',
+          html: parsed.html || 'No HTML Content',
           uid: message.uid,
         };
 
@@ -78,9 +79,9 @@ const fetchEmails = async (imapConfig, accountID, userId) => {
           uid: email.uid,
           from: email.from,
           to: email.to,
-          subject: email.subject || 'No Subject',
-          date: email.date || new Date(),
-          body: email.text || 'No Body',
+          subject: email.subject,
+          date: email.date,
+          body: email.text,
           companyDomain: companyDomain,
           isMarketingEmail: isMarketingEmail,
         });
@@ -109,9 +110,10 @@ const fetchEmails = async (imapConfig, accountID, userId) => {
           }
         }
 
-        // Emit progress update
         const progress = Math.round(((index + 1) / newUIDs.length) * 100);
+        console.log(`Emitting progress: ${progress}%`);
         io.to(userId).emit('fetch-progress', { current: index + 1, total: newUIDs.length, progress });
+        console.log('Progress event emitted to user:', userId, 'for current:', index + 1, 'of total:', newUIDs.length);
       } catch (messageError) {
         console.error('Error processing message:', messageError);
       }

@@ -1,3 +1,4 @@
+<!-- views/index.ejs -->
 <!DOCTYPE html>
 <html lang="en">
 <%- include('partials/_head') %>
@@ -16,32 +17,6 @@
     </div>
   </main>
   <%- include('partials/_footer') %>
-  <script src="/socket.io/socket.io.js"></script>
-  <script>
-    const socket = io();
-
-    // Show progress container when fetching emails starts
-    socket.on('connect', function() {
-      console.log('Connected to WebSocket');
-    });
-
-    // Update progress bar
-    socket.on('fetch-progress', function(data) {
-      document.getElementById('progressContainer').style.display = 'block';
-      const progressText = `Fetching email ${data.current} of ${data.total}`;
-      const progressBar = `${data.progress}%`;
-
-      document.getElementById('progressText').innerText = progressText;
-      document.getElementById('progressBar').style.width = progressBar;
-      document.getElementById('progressBar').innerText = progressBar;
-
-      // Hide progress container when fetching is complete
-      if (data.progress === 100) {
-        setTimeout(() => {
-          document.getElementById('progressContainer').style.display = 'none';
-        }, 2000); // Wait 2 seconds before hiding
-      }
-    });
-  </script>
+  
 </body>
 </html>
